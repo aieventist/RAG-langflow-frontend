@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Eventist RAG AI Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto max-w-4xl p-4">
+        <!-- Header -->
+        <div class="bg-white rounded-lg shadow-lg p-4 mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">Eventist RAG AI Agent</h1>
+        </div>
+
+        <!-- Chat Container -->
+        <div class="bg-white rounded-lg shadow-lg p-4 mb-6">
+            <div id="result" class="h-[400px] overflow-y-auto mb-4 p-4 bg-gray-50 rounded-lg">
+                <!-- Initial message -->
+                <div class="flex items-start mb-4">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                            <span class="text-white text-sm">AI</span>
+                        </div>
+                    </div>
+                    <div class="ml-3 bg-blue-100 p-3 rounded-lg">
+                        <p class="text-gray-800">你好！我是 LangFlow AI 助手，请问有什么我可以帮你的？</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="flex flex-col space-y-3">
+                <!-- File Upload Area -->
+                <div id="fileUploadArea" class="flex items-center space-x-2">
+                    <label for="fileUpload" class="cursor-pointer flex items-center space-x-2 text-blue-500 hover:text-blue-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                        </svg>
+                        <span>上傳文件</span>
+                    </label>
+                    <input type="file" id="fileUpload" class="hidden" onchange="handleFileUpload(this)">
+                    <div id="fileInfo" class="text-sm text-gray-600 hidden">
+                        <span id="fileName"></span>
+                        <button onclick="removeFile()" class="ml-2 text-red-500 hover:text-red-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Text Input and Send Button -->
+                <div class="flex space-x-4">
+                    <input type="text" 
+                           id="input" 
+                           class="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="請輸入您的問題...">
+                    <button onclick="runFlow()" 
+                            class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors">
+                        發送
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let uploadedFile = null;
+
+        // 处理文件上传，限制文件大小（10MB）
+        function handleFileUpload(input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                if (file.size > 10 * 1024 * 1024) { // 10MB
+                    alert("文件太大，請上傳小於10MB的文件！");
+                    input.value = ''; // 清空输入
+                    return;
+                }
+                uploadedFile = file;
+                document.getElementById('fileName').textContent = uploadedFile.name;
+                document.getElementById('fileInfo').classList.remove('hidden');
+            }
+        }
+
+        // 移除上传的文件
+        function removeFile() {
+            uploadedFile = null;
+            document.getElementById('fileUpload').value = '';
+            document.getElementById('fileInfo').classList.add('hidden');
+        }
+
+        // 主函数：运行 Langflow 并更新 UI
+        async function runFlow() {
+            const inputElement = document.getElementById('input');
+            const inputValue = inputElement.value.trim();
+            const resultDiv = document.getElementById('result');
+
+            // 检查输入是否为空
+            if (!inputValue && !uploadedFile) {
+                alert('請輸入內容或上傳文件！');
+                return;
+            }
+            inputElement.value = ''; // 立即清空输入框
+
+            // 构建用户消息
+            const userMessageText = uploadedFile ? `${inputValue} [文件: ${uploadedFile.name}]` : inputValue;
+            const loadingId = 'loading-' + Date.now();
+
+            // 批量插入用户消息和加载动画
+            const htmlBatch = `
+                <div class="flex items-start justify-end mb-4">
+                    <div class="mr-3 bg-green-100 p-3 rounded-lg shadow-md">
+                        <p class="text-gray-800">${userMessageText}</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                            <span class="text-white text-sm">User</span>
+                        </div>
+                    </div>
+                </div>
+                <div id="${loadingId}" class="flex items-start mb-4">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                            <span class="text-white text-sm">AI</span>
+                        </div>
+                    </div>
+                    <div class="ml-3 bg-blue-100 p-3 rounded-lg shadow-md">
+                        <p class="text-gray-800">思考中...</p>
+                    </div>
+                </div>
+            `;
+            resultDiv.insertAdjacentHTML('beforeend', htmlBatch);
+
+            const flowId = '224002c9-26c0-45aa-b5df-e4789c9888c2'; // 替换为你的实际 flowId
+
+            try {
+                // 准备请求参数
+                const fetchOptions = uploadedFile ? {
+                    method: 'POST',
+                    body: (() => {
+                        const formData = new FormData();
+                        formData.append('file', uploadedFile);
+                        formData.append('input_value', inputValue);
+                        return formData;
+                    })()
+                } : {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ input_value: inputValue })
+                };
+
+                // 测量 API 调用时间
+                const startTime = performance.now();
+                const response = await fetch(`http://localhost:7860/api/v1/run/${flowId}`, {
+                    ...fetchOptions,
+                    timeout: 10000 // 10秒超时
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP 錯誤！狀態碼: ${response.status}`);
+                }
+                const data = await response.json();
+                const endTime = performance.now();
+                console.log(`API 回應時間: ${endTime - startTime}ms`);
+
+                // 处理输出，替换换行符
+                let chatOutput = data.outputs[0].outputs[0].messages[0].message.replace(/\n/g, "<br>");
+
+                // 替换加载动画为 AI 响应
+                const aiMessage = `
+                    <div class="flex items-start mb-4">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                                <span class="text-white text-sm">AI</span>
+                            </div>
+                        </div>
+                        <div class="ml-3 bg-blue-100 p-3 rounded-lg shadow-md">
+                            <p class="text-gray-800">${chatOutput}</p>
+                        </div>
+                    </div>
+                `;
+                document.getElementById(loadingId).outerHTML = aiMessage;
+
+                // 清理文件并滚动到底部
+                if (uploadedFile) removeFile();
+                resultDiv.scrollTop = resultDiv.scrollHeight;
+            } catch (error) {
+                console.error('錯誤:', error);
+                // 显示错误消息
+                document.getElementById(loadingId).outerHTML = `
+                    <div class="flex items-start mb-4">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center">
+                                <span class="text-white text-sm">!</span>
+                            </div>
+                        </div>
+                        <div class="ml-3 bg-red-100 p-3 rounded-lg shadow-md">
+                            <p class="text-red-800">發生錯誤: ${error.message}</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // 监听 Enter 键发送消息
+        document.getElementById('input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                runFlow();
+            }
+        });
+    </script>
+</body>
+</html>
