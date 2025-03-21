@@ -70,7 +70,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const sessionId = urlParams.get('session_id');
         const flowId = urlParams.get('flow_id');
-        const langflowUrl = 'http://127.0.0.1:7860'; // This should match your LANGFLOW_URL
+        const langflowUrl = 'https://rag-langflow-proxy.onrender.com'; // Updated to use the Render proxy
 
         // Set session ID in the UI
         document.getElementById('session-id').textContent = sessionId;

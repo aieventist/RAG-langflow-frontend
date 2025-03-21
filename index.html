@@ -22,7 +22,7 @@
         async function checkServerStatus() {
             const messageEl = document.getElementById("message");
             try {
-                const response = await fetch("http://127.0.0.1:5000/", {
+                const response = await fetch("https://rag-langflow-proxy.onrender.com/", {
                     method: "GET",
                     mode: "cors"
                 });
@@ -62,8 +62,8 @@
             messageEl.style.color = "blue";
             
             try {
-                console.log("Sending request to: http://127.0.0.1:5000/validate");
-                const response = await fetch("http://127.0.0.1:5000/validate", {
+                console.log("Sending request to: https://rag-langflow-proxy.onrender.com/validate");
+                const response = await fetch("https://rag-langflow-proxy.onrender.com/validate", {
                     method: "POST",
                     mode: "cors", // Explicitly set CORS mode
                     credentials: "include", // Add credentials to request
