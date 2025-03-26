@@ -203,28 +203,45 @@
                 let chatOutput;
                 
                 try {
-                    // LangFlow API response format
-                    if (data.outputs && Array.isArray(data.outputs)) {
-                        // Try to extract the message from standard LangFlow output format
-                        chatOutput = data.outputs[0]?.output?.content || 
-                                    data.outputs[0]?.messages?.[0]?.content || 
-                                    data.outputs[0]?.messages?.[0]?.message ||
-                                    data.outputs[0]?.text || 
-                                    JSON.stringify(data, null, 2);
+                    // Try to extract the message from the JSON structure
+                    if (data.outputs && Array.isArray(data.outputs) && data.outputs.length > 0) {
+                        if (data.outputs[0].outputs && Array.isArray(data.outputs[0].outputs) && data.outputs[0].outputs.length > 0) {
+                            // If we have the structure shown in the example
+                            if (data.outputs[0].outputs[0].results && data.outputs[0].outputs[0].results.message) {
+                                chatOutput = data.outputs[0].outputs[0].results.message.text;
+                            }
+                            // Check messages array format
+                            else if (data.outputs[0].outputs[0].messages && Array.isArray(data.outputs[0].outputs[0].messages)) {
+                                chatOutput = data.outputs[0].outputs[0].messages[0].message;
+                            }
+                            // Check direct message object
+                            else if (data.outputs[0].outputs[0].message) {
+                                chatOutput = data.outputs[0].outputs[0].message;
+                            }
+                        }
+                        // Try other common locations
+                        else if (data.outputs[0].message) {
+                            chatOutput = data.outputs[0].message;
+                        }
                     }
-                    // Fallback to result format (from our proxy)
-                    else if (data.result) {
-                        chatOutput = typeof data.result === 'string' 
-                            ? data.result
-                            : JSON.stringify(data.result, null, 2);
-                    }
-                    // Default fallback
-                    else {
-                        chatOutput = JSON.stringify(data, null, 2);
+                    
+                    // If none of the above worked, try some final fallbacks
+                    if (!chatOutput) {
+                        if (data.message && typeof data.message === 'string') {
+                            chatOutput = data.message;
+                        } else if (data.result) {
+                            chatOutput = typeof data.result === 'string' 
+                                ? data.result
+                                : JSON.stringify(data.result, null, 2);
+                        } else {
+                            console.log("Could not parse response structure:", data);
+                            chatOutput = "Received response but unable to extract message. See console for details.";
+                        }
                     }
                     
                     // Replace newlines with <br> tags for HTML display
                     if (typeof chatOutput === 'string') {
+                        // Replace Markdown style line breaks with HTML
                         chatOutput = chatOutput.replace(/\n/g, "<br>");
                     }
                 } catch (e) {
