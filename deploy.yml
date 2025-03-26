@@ -1,0 +1,23 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v3
+
+      - name: Update HF_TOKEN in index.html 📝
+        run: |
+          # Replace the placeholder with actual token from GitHub secrets
+          sed -i 's/HF_TOKEN: ""/HF_TOKEN: "${{ secrets.HF_TOKEN }}"/g' index.html
+
+      - name: Deploy to GitHub Pages 🚀
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: . # The folder to deploy 
