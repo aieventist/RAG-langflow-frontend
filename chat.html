@@ -69,8 +69,10 @@
         // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const sessionId = urlParams.get('session_id');
-        const flowId = urlParams.get('flow_id');
-        const langflowUrl = 'https://ai-eventist-rag-langflow-backend.hf.space'; // This should match your LANGFLOW_URL
+        const flowId = urlParams.get('flow_id') || 'f3d9d6ab-0eaf-4a63-9dfb-ce8f14bf6878'; // Default to the exact flow ID
+        
+        // Use the proxy server URL instead of direct HF Space
+        const proxyUrl = 'https://rag-langflow-proxy.onrender.com';
 
         // Set session ID in the UI
         document.getElementById('session-id').textContent = sessionId;
@@ -99,7 +101,7 @@
             document.getElementById('fileInfo').classList.add('hidden');
         }
 
-        // 主函數：運行 Langflow 並更新 UI
+        // 主函數：通過代理運行 Langflow 並更新 UI
         async function runFlow() {
             const inputElement = document.getElementById('input');
             const inputValue = inputElement.value.trim();
@@ -142,51 +144,92 @@
             resultDiv.insertAdjacentHTML('beforeend', htmlBatch);
 
             try {
-                // 準備請求參數
-                const fetchOptions = uploadedFile ? {
-                    method: 'POST',
-                    body: (() => {
-                        const formData = new FormData();
-                        formData.append('file', uploadedFile);
-                        formData.append('input_value', inputValue);
-                        return formData;
-                    })()
-                } : {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        input_value: inputValue,
-                        session_id: sessionId
-                    })
-                };
-
+                // 使用代理接口而不是直接調用 HF Space
+                let apiUrl, fetchOptions;
+                
+                // 用文件上傳和不用文件上傳的處理方式不同
+                if (uploadedFile) {
+                    // 文件上傳的情況，直接使用代理的文件上傳端點
+                    apiUrl = `${proxyUrl}/api/v1/run/${flowId}`;
+                    const formData = new FormData();
+                    formData.append('file', uploadedFile);
+                    formData.append('input_value', inputValue);
+                    if (sessionId) {
+                        formData.append('session_id', sessionId);
+                    }
+                    
+                    fetchOptions = {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'include' // 重要：包含憑證以便 CORS
+                    };
+                } else {
+                    // 沒有文件上傳的情況，使用 Langflow 運行端點
+                    apiUrl = `${proxyUrl}/api/v1/run/${flowId}?stream=false`;
+                    fetchOptions = {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            input_value: inputValue,
+                            output_type: "chat",
+                            input_type: "chat",
+                            session_id: sessionId,
+                            tweaks: {}
+                        }),
+                        credentials: 'include' // 重要：包含憑證以便 CORS
+                    };
+                }
+                
                 // 測量 API 調用時間
                 const startTime = performance.now();
-                const response = await fetch(`${langflowUrl}/api/v1/run/${flowId}`, {
-                    ...fetchOptions,
-                    timeout: 10000 // 10秒超時
-                });
+                
+                console.log(`Calling API: ${apiUrl}`);
+                const response = await fetch(apiUrl, fetchOptions);
+                
                 if (!response.ok) {
+                    console.error("API回應錯誤：", response.status);
+                    console.error("回應標頭：", response.headers);
+                    const errorText = await response.text();
+                    console.error("錯誤詳情：", errorText);
                     throw new Error(`HTTP 錯誤！狀態碼：${response.status}`);
                 }
+                
                 const data = await response.json();
                 const endTime = performance.now();
                 console.log(`API 回應時間：${endTime - startTime}ms`);
+                console.log("API回應數據：", data);
 
                 // 處理輸出，替換換行符
                 let chatOutput;
+                
                 try {
-                    // 嘗試獲取正確的輸出格式
-                    chatOutput = data.outputs[0].outputs[0].messages[0].message.replace(/\\n/g, "<br>");
-                } catch (e) {
-                    // 如果格式不匹配，嘗試其他可能的格式
-                    if (data.result) {
-                        chatOutput = data.result;
-                    } else if (typeof data === 'string') {
-                        chatOutput = data;
-                    } else {
+                    // LangFlow API response format
+                    if (data.outputs && Array.isArray(data.outputs)) {
+                        // Try to extract the message from standard LangFlow output format
+                        chatOutput = data.outputs[0]?.output?.content || 
+                                    data.outputs[0]?.messages?.[0]?.content || 
+                                    data.outputs[0]?.messages?.[0]?.message ||
+                                    data.outputs[0]?.text || 
+                                    JSON.stringify(data, null, 2);
+                    }
+                    // Fallback to result format (from our proxy)
+                    else if (data.result) {
+                        chatOutput = typeof data.result === 'string' 
+                            ? data.result
+                            : JSON.stringify(data.result, null, 2);
+                    }
+                    // Default fallback
+                    else {
                         chatOutput = JSON.stringify(data, null, 2);
                     }
+                    
+                    // Replace newlines with <br> tags for HTML display
+                    if (typeof chatOutput === 'string') {
+                        chatOutput = chatOutput.replace(/\n/g, "<br>");
+                    }
+                } catch (e) {
+                    console.error("Error parsing response:", e);
+                    chatOutput = JSON.stringify(data, null, 2);
                 }
 
                 // 替換加載動畫為 AI 回應
