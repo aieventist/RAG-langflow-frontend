@@ -203,46 +203,81 @@
                 let chatOutput;
                 
                 try {
-                    // Try to extract the message from the JSON structure
+                    console.log("Parsing response data:", JSON.stringify(data, null, 2));
+                    
+                    // SPECIAL CASE: Check if the response matches the exact structure from your example
+                    // This directly handles the JSON structure you provided as an example
                     if (data.outputs && Array.isArray(data.outputs) && data.outputs.length > 0) {
-                        if (data.outputs[0].outputs && Array.isArray(data.outputs[0].outputs) && data.outputs[0].outputs.length > 0) {
-                            // If we have the structure shown in the example
-                            if (data.outputs[0].outputs[0].results && data.outputs[0].outputs[0].results.message) {
-                                chatOutput = data.outputs[0].outputs[0].results.message.text;
+                        // Check for the exact path in your example
+                        const firstOutput = data.outputs[0];
+                        
+                        if (firstOutput.outputs && 
+                            Array.isArray(firstOutput.outputs) && 
+                            firstOutput.outputs.length > 0) {
+                            
+                            const nestedOutput = firstOutput.outputs[0];
+                            
+                            // Try results.message.text path (most common in your example)
+                            if (nestedOutput.results && 
+                                nestedOutput.results.message && 
+                                nestedOutput.results.message.text) {
+                                chatOutput = nestedOutput.results.message.text;
+                                console.log("Found message at results.message.text path");
                             }
-                            // Check messages array format
-                            else if (data.outputs[0].outputs[0].messages && Array.isArray(data.outputs[0].outputs[0].messages)) {
-                                chatOutput = data.outputs[0].outputs[0].messages[0].message;
+                            // Check in artifacts
+                            else if (nestedOutput.artifacts && 
+                                     nestedOutput.artifacts.message) {
+                                chatOutput = nestedOutput.artifacts.message;
+                                console.log("Found message in artifacts");
                             }
-                            // Check direct message object
-                            else if (data.outputs[0].outputs[0].message) {
-                                chatOutput = data.outputs[0].outputs[0].message;
+                            // Check in messages array
+                            else if (nestedOutput.messages && 
+                                     Array.isArray(nestedOutput.messages) && 
+                                     nestedOutput.messages.length > 0) {
+                                if (nestedOutput.messages[0].message) {
+                                    chatOutput = nestedOutput.messages[0].message;
+                                    console.log("Found message in messages array");
+                                }
                             }
-                        }
-                        // Try other common locations
-                        else if (data.outputs[0].message) {
-                            chatOutput = data.outputs[0].message;
                         }
                     }
                     
-                    // If none of the above worked, try some final fallbacks
+                    // If no specific path worked, try generic extraction methods
                     if (!chatOutput) {
-                        if (data.message && typeof data.message === 'string') {
-                            chatOutput = data.message;
-                        } else if (data.result) {
-                            chatOutput = typeof data.result === 'string' 
-                                ? data.result
-                                : JSON.stringify(data.result, null, 2);
-                        } else {
-                            console.log("Could not parse response structure:", data);
-                            chatOutput = "Received response but unable to extract message. See console for details.";
+                        console.log("Trying generic extraction methods");
+                        // Loop through all possible message locations
+                        const possiblePaths = [
+                            data?.outputs?.[0]?.outputs?.[0]?.results?.message?.text,
+                            data?.outputs?.[0]?.artifacts?.message,
+                            data?.outputs?.[0]?.messages?.[0]?.message,
+                            data?.outputs?.[0]?.outputs?.[0]?.message,
+                            data?.message,
+                            data?.result,
+                            data?.outputs?.[0]?.outputs?.[0]?.messages?.[0]?.message
+                        ];
+                        
+                        for (const path of possiblePaths) {
+                            if (path && typeof path === 'string') {
+                                chatOutput = path;
+                                console.log("Found message through fallback path");
+                                break;
+                            }
                         }
                     }
                     
-                    // Replace newlines with <br> tags for HTML display
+                    // Last resort fallback
+                    if (!chatOutput) {
+                        console.warn("Failed to extract message from all known paths");
+                        chatOutput = "Couldn't parse the response. Please check console for details.";
+                    }
+                    
+                    // Format the output for display
                     if (typeof chatOutput === 'string') {
-                        // Replace Markdown style line breaks with HTML
+                        // Replace newlines with HTML breaks for proper formatting
                         chatOutput = chatOutput.replace(/\n/g, "<br>");
+                    } else if (chatOutput) {
+                        // If it's not a string but exists, convert to string
+                        chatOutput = JSON.stringify(chatOutput, null, 2);
                     }
                 } catch (e) {
                     console.error("Error parsing response:", e);
