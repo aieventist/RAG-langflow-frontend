@@ -63,8 +63,9 @@
             
             try {
                 console.log("Sending request to: https://rag-langflow-proxy.onrender.com/validate");
-                const response = await fetch("https://ai-eventist-rag-langflow-proxy.hf.space/validate", {
-    https://rag-langflow-proxy.onrender.com/    mode: "cors", // Explicitly set CORS mode
+                const response = await fetch("https://rag-langflow-proxy.onrender.com/validate", {
+                    method: "POST",
+                    mode: "cors", // Explicitly set CORS mode
                     credentials: "include", // Add credentials to request
                     headers: { 
                         "Content-Type": "application/json",
