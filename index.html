@@ -14,7 +14,7 @@
 <body>
     <h1>Eventist HR AI Agent</h1>
     <input type="text" id="employeeId" placeholder="員工 ID">
-    <button onclick="validateEmployeeId()">提交</button>
+    <button id="submitBtn">提交</button>
     <p id="message"></p>
 
     <script>
@@ -44,9 +44,7 @@
             }
         }
         
-        // Check server status on page load
-        window.addEventListener('DOMContentLoaded', checkServerStatus);
-        
+        // Function to validate employee ID
         async function validateEmployeeId() {
             const employeeId = document.getElementById("employeeId").value;
             const messageEl = document.getElementById("message");
@@ -95,6 +93,15 @@
                 setTimeout(checkServerStatus, 2000);
             }
         }
+        
+        // Set up event listeners once the DOM is fully loaded
+        window.addEventListener('DOMContentLoaded', () => {
+            // Check server status
+            checkServerStatus();
+            
+            // Set up button click event
+            document.getElementById('submitBtn').addEventListener('click', validateEmployeeId);
+        });
     </script>
 </body>
 </html> 
