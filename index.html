@@ -1,3 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eventist HR AI Agent</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+        input { padding: 10px; margin: 10px; }
+        button { padding: 10px 20px; }
+        #message { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Eventist HR AI Agent</h1>
+    <input type="text" id="employeeId" placeholder="員工 ID">
+    <button onclick="validateEmployeeId()">提交</button>
+    <p id="message"></p>
+
+    <script>
+        // Function to ping the server and update status
+        async function checkServerStatus() {
+            const messageEl = document.getElementById("message");
+            try {
+                const response = await fetch("https://rag-langflow-proxy.onrender.com/", {
+                    method: "GET",
+                    mode: "cors"
+                });
+                
+                if (response.ok) {
+                    messageEl.innerText = "伺服器已連接，請輸入員工 ID。";
+                    messageEl.style.color = "green";
+                    return true;
+                } else {
+                    messageEl.innerText = "伺服器狀態異常，請聯繫管理員。";
+                    messageEl.style.color = "red";
+                    return false;
+                }
+            } catch (error) {
+                console.error("Server status check error:", error);
+                messageEl.innerText = "無法連接到伺服器，請確保後端服務已啟動。";
+                messageEl.style.color = "red";
+                return false;
+            }
+        }
+        
+        // Check server status on page load
+        window.addEventListener('DOMContentLoaded', checkServerStatus);
+
 async function validateEmployeeId() {
     const employeeId = document.getElementById("employeeId").value.trim(); // Trim spaces
     const messageEl = document.getElementById("message");
